@@ -1,44 +1,31 @@
-
-from django.shortcuts import get_object_or_404
-from django.db.models import Avg
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
-from django.http import HttpResponse
-
+from django.core.mail import send_mail
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticatedOrReadOnly,
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly
-)
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets, filters
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Categories, Genres, Titles, Reviews
 from .filters import ModelFilterTitles
+from .models import Category, Genre, Title, Review
 from .permissions import GeneralPermission, IsAdmin, IsAuthorModerAdmin
-from .serializers import (
-    CategoriesSerializer,
-    TitlesReadSerializer,
-    TitlesWriteSerializer,
-    GenresSerializer,
-    UserSerializer,
-    CommentsSerializer,
-    ReviewsSerializers,
-    ConfirmationCodeSerializer,
-)
-
+from .serializers import (CategorySerializer, TitleReadSerializer,
+                          TitleWriteSerializer, GenreSerializer,
+                          UserSerializer, CommentSerializer,
+                          ReviewSerializers, ConfirmationCodeSerializer,)
 
 User = get_user_model()
 
 
 @csrf_exempt
-def emailConfirmation(request):
+def email_confirmation(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         if email is None:
@@ -57,7 +44,7 @@ def emailConfirmation(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def SendToken(request):
+def send_token(request):
     serializer = ConfirmationCodeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     confirmation_code = request.POST.get('confirmation_code')
@@ -75,7 +62,7 @@ def SendToken(request):
     return HttpResponse('Неправильный confirmation_code')
 
 
-class UsersViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -95,10 +82,10 @@ class UsersViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CategoriesViewSet(viewsets.ModelViewSet):
-    queryset = Categories.objects.all()
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
     lookup_field = 'slug'
-    serializer_class = CategoriesSerializer
+    serializer_class = CategorySerializer
     permission_classes = [GeneralPermission]
     filter_backends = [filters.SearchFilter]
     search_fields = ('name',)
@@ -110,10 +97,10 @@ class CategoriesViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-class GenresViewSet(viewsets.ModelViewSet):
-    queryset = Genres.objects.all()
+class GenreViewSet(viewsets.ModelViewSet):
+    queryset = Genre.objects.all()
     lookup_field = 'slug'
-    serializer_class = GenresSerializer
+    serializer_class = GenreSerializer
     permission_classes = [GeneralPermission]
     filter_backends = [filters.SearchFilter]
     search_fields = ('name',)
@@ -125,47 +112,47 @@ class GenresViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-class TitlesViewSet(viewsets.ModelViewSet):
+class TitleViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filter_class = ModelFilterTitles
     permission_classes = [GeneralPermission]
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
-            return TitlesWriteSerializer
-        return TitlesReadSerializer
+            return TitleWriteSerializer
+        return TitleReadSerializer
 
     def get_queryset(self):
-        return Titles.objects.all().annotate(rating=Avg('reviews__score'))
+        return Title.objects.all().annotate(rating=Avg('reviews__score'))
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    serializer_class = CommentsSerializer
+    serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorModerAdmin]
 
     def perform_create(self, serializer):
         review_id = self.kwargs['review_id']
-        review = get_object_or_404(Reviews, pk=review_id)
+        review = get_object_or_404(Review, pk=review_id)
         serializer.save(author=self.request.user, review_id=review.id)
 
     def get_queryset(self):
         review_id = self.kwargs['review_id']
-        review = get_object_or_404(Reviews, pk=review_id)
+        review = get_object_or_404(Review, pk=review_id)
         queryset = review.comments.all()
         return queryset
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    serializer_class = ReviewsSerializers
+    serializer_class = ReviewSerializers
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorModerAdmin]
 
     def perform_create(self, serializer):
         title_id = self.kwargs['title_id']
-        title = get_object_or_404(Titles, id=title_id)
+        title = get_object_or_404(Title, id=title_id)
         serializer.save(author=self.request.user, title=title)
 
     def get_queryset(self):
         title_id = self.kwargs['title_id']
-        title = get_object_or_404(Titles, pk=title_id)
+        title = get_object_or_404(Title, pk=title_id)
         queryset = title.reviews.all()
         return queryset
