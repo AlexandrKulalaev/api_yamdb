@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth import get_user_model
-from django.db.models.fields import CharField
 
 
 class CustomUser(AbstractUser):
@@ -22,8 +20,6 @@ class CustomUser(AbstractUser):
         default='user',
         verbose_name='user role'
     )
-
-    # password = CharField(max_length=200, blank=True, null=True)
 
 
 class Categories(models.Model):
