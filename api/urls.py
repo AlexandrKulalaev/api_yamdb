@@ -32,5 +32,5 @@ router_v1.register(
 urlpatterns = [
     path('auth/email/', emailConfirmation),
     path('auth/token/', SendToken),
-    path('', include(router_v1.urls)),
+    path('v1/', include(router_v1.urls)),
 ]

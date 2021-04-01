@@ -7,16 +7,23 @@ from django.db.models.fields import CharField
 class CustomUser(AbstractUser):
     bio = models.TextField(blank=True, null=True)
     email = models.EmailField(unique=True)
+    ADMIN = 'admin'
+    MODERATOR = 'moderator'
+    USER = 'user'
+
     ROLE_CHOISE = [
-        ('admin', 'admin'),
-        ('moderator', 'moderator'),
-        ('user', 'user'),
+        (ADMIN, 'admin'),
+        (MODERATOR, 'moderator'),
+        (USER, 'user'),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOISE, default='user')
-    password = CharField(max_length=200, blank=True, null=True)
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOISE,
+        default='user',
+        verbose_name='user role'
+    )
 
-
-User = get_user_model()
+    # password = CharField(max_length=200, blank=True, null=True)
 
 
 class Categories(models.Model):
