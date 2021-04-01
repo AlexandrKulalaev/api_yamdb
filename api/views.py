@@ -13,6 +13,7 @@ from rest_framework.permissions import (AllowAny, IsAuthenticated,
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .mixins import DestroyListCreateViewSet
 from .filters import ModelFilterTitles
 from .models import Category, Genre, Title, Review
 from .permissions import GeneralPermission, IsAdmin, IsAuthorModerAdmin
@@ -82,7 +83,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(DestroyListCreateViewSet):
     queryset = Category.objects.all()
     lookup_field = 'slug'
     serializer_class = CategorySerializer
@@ -90,14 +91,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ('name',)
 
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(DestroyListCreateViewSet):
     queryset = Genre.objects.all()
     lookup_field = 'slug'
     serializer_class = GenreSerializer
@@ -105,14 +100,9 @@ class GenreViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ('name',)
 
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
 
 class TitleViewSet(viewsets.ModelViewSet):
+    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
     filter_backends = [DjangoFilterBackend]
     filter_class = ModelFilterTitles
     permission_classes = [GeneralPermission]
@@ -121,9 +111,6 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ('create', 'partial_update'):
             return TitleWriteSerializer
         return TitleReadSerializer
-
-    def get_queryset(self):
-        return Title.objects.all().annotate(rating=Avg('reviews__score'))
 
 
 class CommentViewSet(viewsets.ModelViewSet):

@@ -11,7 +11,6 @@ class ConfirmationCodeSerializer(serializers.Serializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         exclude = ('id',)
-        lookup_field = 'slug'
         model = Category
 
 
