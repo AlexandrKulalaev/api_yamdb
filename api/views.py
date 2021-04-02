@@ -1,46 +1,52 @@
-from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db.models import Avg
-from django_filters.rest_framework import DjangoFilterBackend
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets, filters
-from rest_framework.decorators import api_view, permission_classes, action
+from django.views.decorators.csrf import csrf_exempt
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .mixins import DestroyListCreateViewSet
 from .filters import ModelFilterTitles
-from .models import Category, Genre, Title, Review
+from .mixins import DestroyListCreateViewSet
+from .models import Category, Genre, Review, Title
 from .permissions import GeneralPermission, IsAdmin, IsAuthorModerAdmin
-from .serializers import (CategorySerializer, TitleReadSerializer,
-                          TitleWriteSerializer, GenreSerializer,
-                          UserSerializer, CommentSerializer,
-                          ReviewSerializers, ConfirmationCodeSerializer,)
+from .serializers import (CategorySerializer, CommentSerializer,
+                          ConfirmationCodeSerializer, GenreSerializer,
+                          ReviewSerializers, TitleReadSerializer,
+                          TitleWriteSerializer, UserSerializer)
 
 User = get_user_model()
 
 
 @csrf_exempt
 def email_confirmation(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        if email is None:
-            return HttpResponse("Мыло не получено")
+    if request.method != 'POST':
+        return JsonResponse(data={'Error': 'Request method not allowed', })
 
-        user = get_object_or_404(User, email=email)
-        confirmation_code = default_token_generator.make_token(user)
-        send_mail(
-            subject='email_confirmation',
-            message=confirmation_code,
-            from_email='yamdb@ya.ru',
-            recipient_list=[email, ]
-        )
-        return HttpResponse('Confirmation code was sent to your email:')
+    email = request.POST.get('email')
+    if email == '':
+        return JsonResponse(data={'Error': 'Email not recieved', })
+
+    user = get_object_or_404(User, email=email)
+    confirmation_code = default_token_generator.make_token(user)
+    send_mail(
+        subject='email_confirmation',
+        message=confirmation_code,
+        from_email=settings.ADMIN_EMAIL,
+        recipient_list=[email, ]
+    )
+    return JsonResponse(
+        data='Confirmation code was sent to your email',
+        safe=False
+    )
 
 
 @api_view(['POST'])
@@ -48,19 +54,24 @@ def email_confirmation(request):
 def send_token(request):
     serializer = ConfirmationCodeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    confirmation_code = request.POST.get('confirmation_code')
-    email = request.POST.get('email')
-    if confirmation_code is None:
-        return HttpResponse("Введите confirmation_code")
-    if email is None:
-        return HttpResponse("Введите email")
+    confirmation_code = serializer.validated_data['confirmation_code']
+    email = serializer.validated_data['email']
+
     user = get_object_or_404(User, email=email)
     token_check = default_token_generator.check_token(user, confirmation_code)
+
     if token_check is True:
         refresh = RefreshToken.for_user(user)
-        return HttpResponse(
-            f'refresh:{refresh}' + '\n' + f'access:{refresh.access_token}')
-    return HttpResponse('Неправильный confirmation_code')
+        access = refresh.access_token
+        refresh_token = str(refresh)
+        access_token = str(access)
+        return JsonResponse(
+            data={'refresh': refresh_token, 'access': access_token}
+        )
+    return JsonResponse(
+        data='Не верный Confirmation code',
+        safe=False
+    )
 
 
 class UserViewSet(viewsets.ModelViewSet):

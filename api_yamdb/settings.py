@@ -123,3 +123,5 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'api.CustomUser'
+
+ADMIN_EMAIL = 'yamdb@ya.ru'

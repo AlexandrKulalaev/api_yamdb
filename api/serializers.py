@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Comment, Review, Category, Genre, Title, CustomUser
+from .models import Category, Comment, CustomUser, Genre, Review, Title
 
 
 class ConfirmationCodeSerializer(serializers.Serializer):
